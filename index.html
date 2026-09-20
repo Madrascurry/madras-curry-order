@@ -26,4 +26,63 @@ function f(){return{name:document.getElementById('name').value.trim()||'Madrascu
 function sendWA(){let o=order();if(!o.a.length)return alert('Silakan pilih minimal satu menu.');let x=f(),m='*PESANAN MADRAS CURRY*%0A%0ANama: '+encodeURIComponent(x.name)+'%0ANo. WA: '+encodeURIComponent(x.phone)+'%0ATanggal: '+x.date+'%0AJam: '+x.time+'%0AJenis: '+encodeURIComponent(x.type)+'%0A%0A*MENU:*%0A';o.a.forEach(v=>m+='- '+encodeURIComponent(v.n)+' x '+v.q+' = '+fmt(v.q*v.p)+'%0A');m+='%0A*TOTAL: '+fmt(o.t)+'*%0ACatatan: '+encodeURIComponent(x.notes);window.open('https://wa.me/628996340674?text='+m,'_blank')}
 function printReceipt(){let o=order();if(!o.a.length)return alert('Silakan pilih minimal satu menu.');let x=f();document.getElementById('meta').innerHTML='<b>Nama:</b> '+x.name+'<br><b>No. WA:</b> '+x.phone+'<br><b>Tanggal:</b> '+x.date+'<br><b>Jam:</b> '+x.time+'<br><b>Jenis:</b> '+x.type+'<br><b>Catatan:</b> '+x.notes;document.getElementById('rlines').innerHTML=o.a.map(v=>`<div class="r"><span>${v.n} × ${v.q}</span><b>${fmt(v.q*v.p)}</b></div>`).join('');document.getElementById('rtotal').textContent='TOTAL: '+fmt(o.t);window.print()}
 update();
+</script><script src="supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const madrasSupabase = window.supabase.createClient(
+  window.MADRAS_SUPABASE_URL,
+  window.MADRAS_SUPABASE_ANON_KEY
+);
+
+async function kirimOrderKeDashboard() {
+  const data = order();
+
+  if (!data.a.length) {
+    alert("Silakan pilih minimal satu menu.");
+    return false;
+  }
+
+  const nama = document.getElementById("name").value.trim() || "Madrascurry";
+  const phone = document.getElementById("phone").value.trim() || "-";
+  const tanggal = document.getElementById("date").value || new Date().toISOString().slice(0,10);
+  const waktu = document.getElementById("time")?.value || "";
+  const alamat = document.getElementById("notes").value.trim() || "-";
+  const jenis = document.getElementById("type").value || "Ambil di tempat";
+
+  const nomorPesanan =
+    "WEB-" +
+    tanggal.replaceAll("-", "").slice(2) +
+    "-" +
+    Math.random().toString(36).substring(2,8).toUpperCase();
+
+  const menu = data.a.map(x =>
+    `${x.n} x${x.q}`
+  ).join(", ");
+
+  const { error } = await madrasSupabase
+    .from("orders")
+    .insert([{
+      order_number: nomorPesanan,
+      order_date: tanggal,
+      customer_name: nama,
+      phone: phone,
+      source: "Website",
+      address: alamat,
+      shipping: jenis,
+      product_name: menu,
+      qty: data.a.reduce((s,x) => s + x.q, 0),
+      total: data.t,
+      status: "Belum Dibayar",
+      notes: waktu ? `Waktu: ${waktu}` : ""
+    }]);
+
+  if (error) {
+    console.error(error);
+    alert("Order belum masuk ke dashboard. Periksa koneksi Supabase.");
+    return false;
+  }
+
+  return true;
+}
 </script></body></html>
